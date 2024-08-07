@@ -1,12 +1,15 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType } from 'discord.js';
+import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, UserFlagsString, Activity, Presence } from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
+import { getSize, assetsURL, getFlags } from './handlers/functions';
 
 config();
 
 const app = express();
+
+app.use(express.json());
 
 const client = new Client({
   shards: "auto",
@@ -25,6 +28,15 @@ const client = new Client({
     status: PresenceUpdateStatus.Online
   }
 });
+
+["antiCrash"].filter(Boolean)
+    .forEach(h => {
+        require(`./handlers/${h}`)(client);
+    })
+
+interface CustomError extends Error {
+    status?: number;
+}
 
 var corsOptions = {
     origin: '*',
@@ -51,7 +63,7 @@ app.get('/v1/', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/v1/guilds/:guildId', cors(corsOptions), async (req, res) => {
+app.get('/v1/guilds/:guildId', cors(corsOptions), async (req: Request, res: Response, next: NextFunction) => {
   client.guilds.fetch(req.params.guildId).then((guild) => {
       if (!guild) {
           res.status(404).send({
@@ -68,9 +80,9 @@ app.get('/v1/guilds/:guildId', cors(corsOptions), async (req, res) => {
   });
 });
 
-app.get('/v1/users/:userId', cors(corsOptions), async (req, res) => {
+app.get('/v1/users/:userId', cors(corsOptions), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        client.users.fetch(req.params.userId, { force: true }).then((user) => {
+        const user = await client.users.fetch(req.params.userId, { force: true });
             if (!user) {
                 res.status(404).send({
                     status: 404,
@@ -164,48 +176,83 @@ app.get('/v1/users/:userId', cors(corsOptions), async (req, res) => {
                                 });
                             }
                             break;
+                        case "badges":
+                            // @ts-ignore
+                            res.send(getFlags(user.flags.toArray()));
+                            break;
                     }
                 } else {
-                    res.send({
-                        status: 200,
-                        message: "User found!",
-                        data: user
-                    });
+                    let badges: string[] = [];
+                    let banner: string = "";
+                    let avatarDecorationURL: string = "";
+                    let presence: any = {};
+
+                    let data = { ...user, badges, banner, avatarDecorationURL, presence };
+
+                    if (user.flags) data.badges = getFlags(user.flags.toArray());
+                    // @ts-ignore
+                    if (user.bannerURL({ size: 4096 })) data.banner = user.bannerURL({ size: 4096 });
+                    // @ts-ignore
+                    if (user.avatarDecorationURL({ size: 4096 })) data.avatarDecorationURL = user.avatarDecorationURL({ size: 4096 });
+
+                    try {
+                        // @ts-ignore
+                        client.guilds.fetch(process.env.BASE_GUILD).then(async(guild) => {
+                            let member = guild.members.cache.get(user.id)
+                            if (member) {
+
+                                data.presence = member.presence;
+
+                                data.presence.activities.forEach((activity: Activity) => {
+                                    if (activity.name !== "Custom Status") {
+                                        let assets = { largeImageURL: "", smallImageURL: "" }
+                                        // @ts-ignore
+                                        assets = assetsURL(activity, assets);
+
+                                        if (activity.assets) {
+                                            activity.assets.largeImage = assets.largeImageURL;
+                                            activity.assets.smallImage = assets.smallImageURL;
+                                        }
+                                    }
+                                })
+
+
+                                res.send({
+                                    status: 200,
+                                    message: "User found!",
+                                    data: data
+                                });
+                            } else {
+                                res.send({
+                                    status: 200,
+                                    message: "User found!",
+                                    data: data
+                                });
+                            }
+                        });
+                    } catch {
+                        res.send({
+                            status: 200,
+                            message: "User found!",
+                            data: data
+                        });
+                    }
                 }
             }
-        });
-    } catch (error) {
-        res.status(404).send({
-            status: 404,
-            message: error
-        });
+    } catch {
+        const error: CustomError = new Error('Invalid ID');
+        error.status = 404;
+        return next(error);
     }
 });
 
-function getSize(size: number) {
-    switch (size) {
-        case 16:
-            return 16;
-        case 32:
-            return 32;
-        case 64:
-            return 64;
-        case 128:
-            return 128;
-        case 256:
-            return 256;
-        case 512:
-            return 512;
-        case 1024:
-            return 1024;
-        case 2048:
-            return 2048;
-        case 4096:
-            return 4096;
-        default:
-            return 4096;
+app.use((err: CustomError, req: Request, res: Response, next: NextFunction) => {
+    console.error(err.message);
+    if (err.status === 404) {
+        return res.status(404).send({ error: 'Not Found' });
     }
-}
+    res.status(500).send({ error: 'Internal Server Error' });
+});
 
 app.listen(process.env.PORT || 3001, () => {
   console.log(`Server is running on port ${process.env.PORT || 3001}`);
