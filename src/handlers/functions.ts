@@ -1,10 +1,19 @@
-import { Activity, UserFlagsString } from "discord.js";
+import { Activity, UserFlagsString, Client, User } from "discord.js";
+import { Response } from 'express';
+
+function isUrl(url: string) {
+    if (url.match(/(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g)) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 function assetsURL(activity: Activity, data: { largeImageURL: string, smallImageURL: string }) {
     if (activity.assets) {
-        if (activity.assets.largeImage)
+        if (activity.assets.largeImage && !isUrl(activity.assets.largeImage))
             data["largeImageURL"] = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.assets.largeImage}.png`;
-        if (activity.assets.smallImage)
+        if (activity.assets.smallImage && !isUrl(activity.assets.smallImage))
             data["smallImageURL"] = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.assets.smallImage}.png`;
         return data;
     } else {
@@ -84,4 +93,69 @@ function getSize(size: number) {
     }
 }
 
-export { assetsURL, getFlags, getSize };
+function getAllUserData(res: Response, client: Client, user: User) {
+    let badges: string[] = [];
+    let avatarURL: string = "";
+    let bannerURL: string = "";
+    let avatarDecorationURL: string = "";
+    let presence: any = {};
+
+    let data = { ...user, badges, avatarURL, bannerURL, avatarDecorationURL, presence };
+
+    if (user.flags) data.badges = getFlags(user.flags.toArray());
+    // @ts-ignore
+    if (user.avatarURL({ size: 4096 })) data.avatarURL = user.avatarURL({ size: 4096 });
+    // @ts-ignore
+    if (user.bannerURL({ size: 4096 })) data.bannerURL = user.bannerURL({ size: 4096 });
+    // @ts-ignore
+    if (user.avatarDecorationURL({ size: 4096 })) data.avatarDecorationURL = user.avatarDecorationURL({ size: 4096 });
+
+    try {
+        // @ts-ignore
+        client.guilds.fetch(process.env.BASE_GUILD).then(async(guild) => {
+            let member = guild.members.cache.get(user.id)
+            if (member) {
+
+                data.presence = member.presence;
+
+                data.presence.activities.forEach((activity: Activity) => {
+                    if (activity.name !== "Custom Status") {
+                        let assets = { largeImageURL: "", smallImageURL: "" }
+                        // @ts-ignore
+                        assets = assetsURL(activity, assets);
+
+                        if (activity.assets) {
+                            if (assets.largeImageURL.length > 0) {
+                                activity.assets.largeImage = assets.largeImageURL;
+                            }
+                            if (assets.smallImageURL.length > 0) {
+                                activity.assets.smallImage = assets.smallImageURL;
+                            }
+                        }
+                    }
+                })
+
+
+                res.send({
+                    status: 200,
+                    message: "User found!",
+                    data: data
+                });
+            } else {
+                res.send({
+                    status: 200,
+                    message: "User found!",
+                    data: data
+                });
+            }
+        });
+    } catch {
+        res.send({
+            status: 200,
+            message: "User found!",
+            data: data
+        });
+    }
+}
+
+export { assetsURL, getFlags, getSize, getAllUserData };

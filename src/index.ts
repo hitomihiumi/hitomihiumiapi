@@ -1,9 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, UserFlagsString, Activity, Presence } from 'discord.js';
+import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType } from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
-import { getSize, assetsURL, getFlags } from './handlers/functions';
+import { getSize, getFlags, getAllUserData } from './handlers/functions';
 
 config();
 
@@ -180,63 +180,15 @@ app.get('/v1/users/:userId', cors(corsOptions), async (req: Request, res: Respon
                             // @ts-ignore
                             res.send(getFlags(user.flags.toArray()));
                             break;
+                        case "all":
+                            getAllUserData(res, client, user);
+                            break;
+                        default:
+                            getAllUserData(res, client, user);
+                            break;
                     }
                 } else {
-                    let badges: string[] = [];
-                    let banner: string = "";
-                    let avatarDecorationURL: string = "";
-                    let presence: any = {};
-
-                    let data = { ...user, badges, banner, avatarDecorationURL, presence };
-
-                    if (user.flags) data.badges = getFlags(user.flags.toArray());
-                    // @ts-ignore
-                    if (user.bannerURL({ size: 4096 })) data.banner = user.bannerURL({ size: 4096 });
-                    // @ts-ignore
-                    if (user.avatarDecorationURL({ size: 4096 })) data.avatarDecorationURL = user.avatarDecorationURL({ size: 4096 });
-
-                    try {
-                        // @ts-ignore
-                        client.guilds.fetch(process.env.BASE_GUILD).then(async(guild) => {
-                            let member = guild.members.cache.get(user.id)
-                            if (member) {
-
-                                data.presence = member.presence;
-
-                                data.presence.activities.forEach((activity: Activity) => {
-                                    if (activity.name !== "Custom Status") {
-                                        let assets = { largeImageURL: "", smallImageURL: "" }
-                                        // @ts-ignore
-                                        assets = assetsURL(activity, assets);
-
-                                        if (activity.assets) {
-                                            activity.assets.largeImage = assets.largeImageURL;
-                                            activity.assets.smallImage = assets.smallImageURL;
-                                        }
-                                    }
-                                })
-
-
-                                res.send({
-                                    status: 200,
-                                    message: "User found!",
-                                    data: data
-                                });
-                            } else {
-                                res.send({
-                                    status: 200,
-                                    message: "User found!",
-                                    data: data
-                                });
-                            }
-                        });
-                    } catch {
-                        res.send({
-                            status: 200,
-                            message: "User found!",
-                            data: data
-                        });
-                    }
+                    getAllUserData(res, client, user);
                 }
             }
     } catch {
