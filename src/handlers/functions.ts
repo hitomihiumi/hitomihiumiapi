@@ -1,5 +1,6 @@
 import { Activity, UserFlagsString, Client, User } from "discord.js";
 import { Response } from 'express';
+import { Documentation } from "@hitomihiumi/micro-docgen";
 
 function isUrl(url: string) {
     if (url.match(/(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g)) {
@@ -158,4 +159,8 @@ function getAllUserData(res: Response, client: Client, user: User) {
     }
 }
 
-export { assetsURL, getFlags, getSize, getAllUserData };
+function sortPackages(docs: Array<Documentation>): Array<Documentation> {
+    return docs.sort((a, b) => b.metadata.timestamp - a.metadata.timestamp);
+}
+
+export { assetsURL, getFlags, getSize, getAllUserData, sortPackages };

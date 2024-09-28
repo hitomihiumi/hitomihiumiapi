@@ -3,7 +3,8 @@ import cors from 'cors';
 import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType } from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
-import { getSize, getFlags, getAllUserData } from './handlers/functions';
+import { getSize, getFlags, getAllUserData, sortPackages } from './handlers/functions';
+import type { Documentation } from "@hitomihiumi/micro-docgen";
 
 config();
 
@@ -38,16 +39,17 @@ interface CustomError extends Error {
     status?: number;
 }
 
-var corsOptions = {
-    origin: '*',
-    optionsSuccessStatus: 200
-}
+app.use(cors({
+    origin: 'https://api.hitomihiumi.xyz',
+    methods: ['GET'],
+    credentials: true
+}));
 
-app.get('/', cors(corsOptions), (req, res) => {
+app.get('/', (req, res) => {
     res.redirect('/v1/');
 });
 
-app.get('/v1/', cors(corsOptions), (req, res) => {
+app.get('/v1/', (req, res) => {
   res.send({
     version: info.version,
     status: 200,
@@ -63,7 +65,7 @@ app.get('/v1/', cors(corsOptions), (req, res) => {
   });
 });
 
-app.get('/v1/guilds/:guildId', cors(corsOptions), async (req: Request, res: Response, next: NextFunction) => {
+app.get('/v1/guilds/:guildId', async (req: Request, res: Response, next: NextFunction) => {
   client.guilds.fetch(req.params.guildId).then((guild) => {
       if (!guild) {
           res.status(404).send({
@@ -80,7 +82,7 @@ app.get('/v1/guilds/:guildId', cors(corsOptions), async (req: Request, res: Resp
   });
 });
 
-app.get('/v1/users/:userId', cors(corsOptions), async (req: Request, res: Response, next: NextFunction) => {
+app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = await client.users.fetch(req.params.userId, { force: true });
             if (!user) {
@@ -195,6 +197,37 @@ app.get('/v1/users/:userId', cors(corsOptions), async (req: Request, res: Respon
         const error: CustomError = new Error('Invalid ID');
         error.status = 404;
         return next(error);
+    }
+});
+
+app.get('/v1/docs', async (req, res) => {
+    try {
+        let versions = await fetch('https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/versions.json');
+        let data = await versions.json();
+
+        if (!Array.isArray(data.modules)) {
+            throw new Error('data.modules is not an array');
+        }
+
+        var docs = [] as Array<Documentation>;
+
+        for (const module of data.modules) {
+            if (!Array.isArray(data.module[module])) {
+                throw new Error(`data.module[${module}] is not an array`);
+            }
+
+            for (const version of data.module[module]) {
+                let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${module}/${version}.json`);
+                let data = await raw.json();
+                docs.push(data);
+            }
+        }
+
+        docs = sortPackages(docs);
+        res.send(docs);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
     }
 });
 
