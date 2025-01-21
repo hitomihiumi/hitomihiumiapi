@@ -6,6 +6,14 @@ import { config } from 'dotenv';
 import { getSize, getFlags, getAllUserData, sortPackages } from './handlers/functions';
 import type { Documentation } from "@hitomihiumi/micro-docgen";
 
+import { Holder } from "./handlers/Holder";
+
+const v_1 = new Holder('v1');
+const v_2 = new Holder('v2');
+
+v_1.init();
+v_2.init();
+
 config();
 
 const app = express();
@@ -39,11 +47,12 @@ interface CustomError extends Error {
     status?: number;
 }
 
-app.use(cors({
-    origin: 'https://api.hitomihiumi.xyz',
-    methods: ['GET'],
-    credentials: true
-}));
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
+    next()
+});
 
 app.get('/', (req, res) => {
     res.redirect('/v1/');
@@ -60,6 +69,9 @@ app.get('/v1/', (req, res) => {
         },
         users: {
             get: "/v1/users/:userId"
+        },
+        docs: {
+            get: "/v1/docs"
         }
     }
   });
@@ -211,19 +223,132 @@ app.get('/v1/docs', async (req, res) => {
 
         var docs = [] as Array<Documentation>;
 
-        for (const module of data.modules) {
-            if (!Array.isArray(data.module[module])) {
-                throw new Error(`data.module[${module}] is not an array`);
-            }
+        if (!(v_1.compareVersions(data))) {
+            let diff = v_1.diffVersions(data);
+            for (let module of diff.modules) {
+                if (!Array.isArray(data.versions[module])) {
+                    throw new Error(`data.versions[${module}] is not an array`);
+                }
 
-            for (const version of data.module[module]) {
-                let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${module}/${version}.json`);
-                let data = await raw.json();
-                docs.push(data);
+                for (const version of data.versions[module]) {
+                    let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${module}/${version}.json`);
+                    let data = await raw.json() as Documentation;
+                    await v_1.write(data);
+                    docs.push(data);
+                }
+            }
+        } else {
+            for (const module of data.modules) {
+                if (!Array.isArray(data.versions[module])) {
+                    throw new Error(`data.versions[${module}] is not an array`);
+                }
+
+                for (const version of data.versions[module]) {
+                    let data = await v_1.read(module, version);
+                    docs.push(data);
+                }
             }
         }
 
         docs = sortPackages(docs);
+        res.send(docs);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
+    }
+});
+
+app.get('/v1/docs/:module/:version', async (req, res) => {
+    try {
+
+        let docs: Documentation;
+
+        if (v_1.versions.modules.includes(req.params.module) && v_1.versions.versions[req.params.module].includes(req.params.version)) {
+            docs = await v_1.read(req.params.module, req.params.version);
+        } else {
+            let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${req.params.module}/${req.params.version}.json`);
+            docs = await raw.json();
+            await v_1.write(docs);
+        }
+
+        res.send(docs);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
+    }
+});
+
+app.get('/v2/', (req, res) => {
+    res.send({
+        version: info.version,
+        status: 200,
+        message: "Discord-Web-API is running!",
+        endpoints: {
+            docs: {
+                get: "/v2/docs"
+            }
+        }
+    });
+});
+
+app.get('/v2/docs', async (req, res) => {
+    try {
+        let versions = await fetch('https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/versions.json');
+        let data = await versions.json();
+
+        if (!Array.isArray(data.modules)) {
+            throw new Error('data.modules is not an array');
+        }
+
+        var docs = [] as Array<Documentation>;
+
+        if (!(v_2.compareVersions(data))) {
+            let diff = v_2.diffVersions(data);
+            for (let module of diff.modules) {
+                if (!Array.isArray(data.versions[module])) {
+                    throw new Error(`data.versions[${module}] is not an array`);
+                }
+
+                for (const version of data.versions[module]) {
+                    let raw = await fetch(`https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/${module}/${version}.json`);
+                    let data = await raw.json() as Documentation;
+                    await v_2.write(data);
+                    docs.push(data);
+                }
+            }
+        } else {
+            for (const module of data.modules) {
+                if (!Array.isArray(data.versions[module])) {
+                    throw new Error(`data.versions[${module}] is not an array`);
+                }
+
+                for (const version of data.versions[module]) {
+                    docs.push(await v_2.read(module, version));
+                }
+            }
+        }
+
+        docs = sortPackages(docs);
+        res.send(docs);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
+    }
+});
+
+app.get('/v2/docs/:module/:version', async (req, res) => {
+    try {
+
+        let docs: Documentation;
+
+        if (v_2.versions.modules.includes(req.params.module) && v_2.versions.versions[req.params.module].includes(req.params.version)) {
+            docs = await v_2.read(req.params.module, req.params.version);
+        } else {
+            let raw = await fetch(`https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/${req.params.module}/${req.params.version}.json`);
+            docs = await raw.json();
+            await v_2.write(docs);
+        }
+
         res.send(docs);
     } catch (error: any) {
         console.error(error);
