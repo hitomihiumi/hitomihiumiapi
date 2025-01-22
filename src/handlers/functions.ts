@@ -2,26 +2,6 @@ import { Activity, UserFlagsString, Client, User } from "discord.js";
 import { Response } from 'express';
 import { Documentation } from "@hitomihiumi/micro-docgen";
 
-function isUrl(url: string) {
-    if (url.match(/(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-function assetsURL(activity: Activity, data: { largeImageURL: string, smallImageURL: string }) {
-    if (activity.assets) {
-        if (activity.assets.largeImage && !isUrl(activity.assets.largeImage))
-            data["largeImageURL"] = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.assets.largeImage}.png`;
-        if (activity.assets.smallImage && !isUrl(activity.assets.smallImage))
-            data["smallImageURL"] = `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.assets.smallImage}.png`;
-        return data;
-    } else {
-        return data;
-    }
-}
-
 function getFlags(flags: UserFlagsString[]) {
     let badges: string[] = [];
 
@@ -121,17 +101,9 @@ function getAllUserData(res: Response, client: Client, user: User) {
 
                 data.presence.activities.forEach((activity: Activity) => {
                     if (activity.name !== "Custom Status") {
-                        let assets = { largeImageURL: "", smallImageURL: "" }
-                        // @ts-ignore
-                        assets = assetsURL(activity, assets);
-
                         if (activity.assets) {
-                            if (assets.largeImageURL.length > 0) {
-                                activity.assets.largeImage = assets.largeImageURL;
-                            }
-                            if (assets.smallImageURL.length > 0) {
-                                activity.assets.smallImage = assets.smallImageURL;
-                            }
+                            activity.assets.largeImage = activity.assets.largeImageURL();
+                            activity.assets.smallImage = activity.assets.smallImageURL();
                         }
                     }
                 })
@@ -163,4 +135,4 @@ function sortPackages(docs: Array<Documentation>): Array<Documentation> {
     return docs.sort((a, b) => b.metadata.timestamp - a.metadata.timestamp);
 }
 
-export { assetsURL, getFlags, getSize, getAllUserData, sortPackages };
+export { getFlags, getSize, getAllUserData, sortPackages };

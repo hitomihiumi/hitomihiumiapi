@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "cors": "^2.8.5",
-    "discord.js": "^14.15.3",
+    "discord.js": "^14.17.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "@hitomihiumi/micro-docgen": "^0.3.0"
@@ -12,7 +12,7 @@
     "typescript": "^5.4.5"
   },
   "name": "hitomihiumiapi",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "index.js",
   "scripts": {
     "build": "tsc",

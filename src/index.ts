@@ -1,6 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import { Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType } from 'discord.js';
+import {Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, Activity} from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
 import { getSize, getFlags, getAllUserData, sortPackages } from './handlers/functions';
@@ -180,7 +179,19 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                                 // @ts-ignore
                                 client.guilds.fetch(process.env.BASE_GUILD).then((guild) => {
                                     guild.members.fetch(user.id).then((member: { presence: any; }) => {
-                                        res.send(member.presence);
+                                        member.presence.activities.forEach((activity: Activity) => {
+                                            if (activity.name !== "Custom Status") {
+                                                if (activity.assets) {
+                                                    activity.assets.largeImage = activity.assets.largeImageURL();
+                                                    activity.assets.smallImage = activity.assets.smallImageURL();
+                                                }
+                                            }
+                                        })
+                                        res.send({
+                                            status: 200,
+                                            message: "User found!",
+                                            data: member.presence
+                                        });
                                     });
                                 });
                             } catch (error) {
