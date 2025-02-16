@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import {Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, Activity} from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
-import { getSize, getFlags, getAllUserData, sortPackages, processResponse } from './handlers/functions';
+import {getSize, getFlags, getAllUserData, sortPackages, processResponse, extendProfile} from './handlers/functions';
 import type { Documentation } from "@hitomihiumi/micro-docgen";
 
 import { Holder } from "./handlers/Holder";
@@ -387,7 +387,7 @@ app.get('/v2/steam/user/:userId', async (req, res) => {
 
         let user = await data.json();
 
-        res.send(user);
+        res.send(await extendProfile(user));
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });

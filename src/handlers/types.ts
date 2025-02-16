@@ -43,3 +43,44 @@ export interface ExtendedSteamGame extends SteamGame {
     library_hero: string;
     library_hero_2x: string;
 }
+
+export interface SteamUsers {
+    response: {
+        players: SteamProfile[];
+    }
+}
+
+export interface SteamProfile {
+    steamid: string;
+    personaname: string;
+    profileurl: string;
+    avatar: string;
+    avatarmedium: string;
+    avatarfull: string;
+    personastate: number;
+    communityvisibilitystate: number;
+    profilestate: number;
+    lastlogoff: number;
+    commentpermission: number;
+    realname: string;
+    primaryclanid: string;
+    timecreated: number;
+    gameid?: string;
+    gameserverip?: string;
+    gameextrainfo?: string;
+    cityid?: number;
+    loccountrycode?: string;
+    locstatecode?: string;
+    loccityid?: number;
+}
+
+export interface ExtendedSteamUsers {
+    response: {
+        players: ExtendedSteamProfile[];
+    }
+}
+
+export interface ExtendedSteamProfile extends SteamProfile {
+    background: string | null;
+    frame: string | null;
+}

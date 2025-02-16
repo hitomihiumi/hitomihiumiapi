@@ -1,7 +1,9 @@
-import {Activity, Client, User, UserFlagsString} from "discord.js";
-import {Response} from 'express';
-import {Documentation} from "@hitomihiumi/micro-docgen";
-import {ExtendedSteamResponse, SteamResponse} from "./types";
+import { Activity, Client, User, UserFlagsString } from "discord.js";
+import { Response } from 'express';
+import { Documentation } from "@hitomihiumi/micro-docgen";
+import {ExtendedSteamProfile, ExtendedSteamResponse, ExtendedSteamUsers, SteamResponse, SteamUsers} from "./types";
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 function getFlags(flags: UserFlagsString[]) {
     let badges: string[] = [];
@@ -145,6 +147,28 @@ function excludeGame(response: SteamResponse): SteamResponse {
     return response;
 }
 
+async function extendProfile(response: SteamUsers): Promise<ExtendedSteamUsers> {
+    let newRes: ExtendedSteamUsers = {
+        response: {
+            players: []
+        }
+    }
+    for (const player of response.response.players) {
+        const { data } = await axios.get(player.profileurl);
+        const $ = cheerio.load(data);
+
+        let profile: ExtendedSteamProfile = {
+            ...player,
+            background: $('.profile_background_image').children('video').attr('poster') || $('.profile_animated_background').children('video').attr('poster') || null,
+            frame: $('.profile_avatar_frame').children('img').attr('src') || null
+        }
+
+        newRes.response.players.push(profile);
+    }
+
+    return newRes;
+}
+
 function extendResponce(response: SteamResponse): ExtendedSteamResponse {
     let newRes: ExtendedSteamResponse = {
         response: {
@@ -174,4 +198,4 @@ function processResponse(response: SteamResponse): ExtendedSteamResponse {
     return extendResponce(excludeGame(response));
 }
 
-export { getFlags, getSize, getAllUserData, sortPackages, excludeGame, extendResponce, processResponse };
+export { getFlags, getSize, getAllUserData, sortPackages, excludeGame, extendResponce, processResponse, extendProfile };
