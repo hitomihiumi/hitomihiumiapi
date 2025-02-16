@@ -1,6 +1,7 @@
-import { Activity, UserFlagsString, Client, User } from "discord.js";
-import { Response } from 'express';
-import { Documentation } from "@hitomihiumi/micro-docgen";
+import {Activity, Client, User, UserFlagsString} from "discord.js";
+import {Response} from 'express';
+import {Documentation} from "@hitomihiumi/micro-docgen";
+import {ExtendedSteamResponse, SteamResponse} from "./types";
 
 function getFlags(flags: UserFlagsString[]) {
     let badges: string[] = [];
@@ -135,4 +136,42 @@ function sortPackages(docs: Array<Documentation>): Array<Documentation> {
     return docs.sort((a, b) => b.metadata.timestamp - a.metadata.timestamp);
 }
 
-export { getFlags, getSize, getAllUserData, sortPackages };
+function excludeGame(response: SteamResponse): SteamResponse {
+    if (process.env.EXCLUDED_GAMES) {
+        // @ts-ignore
+        response.response.games = response.response.games.filter((game) => !(process.env.EXCLUDED_GAMES.split(',').map((value) => Number(value)).includes(game.appid)));
+        response.response.total_count = response.response.games.length;
+    }
+    return response;
+}
+
+function extendResponce(response: SteamResponse): ExtendedSteamResponse {
+    let newRes: ExtendedSteamResponse = {
+        response: {
+            total_count: response.response.total_count,
+            games: []
+        }
+    }
+
+    response.response.games.forEach((game) => {
+        newRes.response.games.push({
+            ...game,
+            library_capsule: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_600x900.jpg`,
+            library_capsule_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_600x900_2x.jpg`,
+            library_header: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+            library_header_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header_2x.jpg`,
+            library_logo: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/logo.png`,
+            library_logo_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/logo_2x.png`,
+            library_hero: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_hero.jpg`,
+            library_hero_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_hero_2x.jpg`
+        });
+    });
+
+    return newRes;
+}
+
+function processResponse(response: SteamResponse): ExtendedSteamResponse {
+    return extendResponce(excludeGame(response));
+}
+
+export { getFlags, getSize, getAllUserData, sortPackages, excludeGame, extendResponce, processResponse };

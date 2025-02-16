@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import {Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, Activity} from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
-import { getSize, getFlags, getAllUserData, sortPackages } from './handlers/functions';
+import { getSize, getFlags, getAllUserData, sortPackages, processResponse } from './handlers/functions';
 import type { Documentation } from "@hitomihiumi/micro-docgen";
 
 import { Holder } from "./handlers/Holder";
@@ -297,6 +297,20 @@ app.get('/v2/', (req, res) => {
         endpoints: {
             docs: {
                 get: "/v2/docs"
+            },
+            steam: {
+                user: {
+                    get: "/v2/steam/user/:userId",
+                    games: {
+                        get: "/v2/steam/user/:userId/games",
+                        achievements: {
+                            get: "/v2/steam/user/:userId/games/achievements/:appId"
+                        },
+                        recently: {
+                            get: "/v2/steam/user/:userId/games/recently"
+                        }
+                    }
+                }
             }
         }
     });
@@ -364,6 +378,71 @@ app.get('/v2/docs/:module/:version', async (req, res) => {
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
+    }
+});
+
+app.get('/v2/steam/user/:userId', async (req, res) => {
+    try {
+        let data = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${process.env.STEAM_API_KEY}&steamids=${req.params.userId}&format=json`);
+
+        let user = await data.json();
+
+        res.send(user);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
+    }
+});
+
+app.get('/v2/steam/user/:userId/games', async (req, res) => {
+    try {
+        let data = await fetch(`http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
+
+        let games = processResponse(await data.json());
+
+        res.send(games);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+});
+
+app.get('/v2/steam/user/:userId/games/stats/:appId', async (req, res) => {
+    try {
+        let data = await fetch(`http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?appid=${req.params.appId}&key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
+
+        let stats = await data.json();
+
+        res.send(stats);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+});
+
+app.get('/v2/steam/user/:userId/games/achievements/:appId', async (req, res) => {
+    try {
+        let data = await fetch(`http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?appid=${req.params.appId}&key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
+
+        let achievements = await data.json();
+
+        res.send(achievements);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+});
+
+app.get('/v2/steam/user/:userId/games/recently', async (req, res) => {
+    try {
+        let data = await fetch(`http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
+
+        let games = processResponse(await data.json());
+
+        res.send(games);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
     }
 });
 

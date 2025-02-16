@@ -109,7 +109,7 @@ Get user information by ID.
 #### Example
 
 ```http
-GET /v1/user/991777093312585808?size=1024&forceStatic=true&content=avatar
+GET http://localhost:3000/v1/user/991777093312585808?size=1024&forceStatic=true&content=avatar
 ```
 
 ### GET /v1/server/:id
@@ -119,3 +119,65 @@ Get server information by ID. **IMPORTANT!!! Information about the Discord serve
 #### Parameters
 
 - `id` - Server ID
+
+### GET /v2/steam/user/:userId
+
+Get Steam user information by ID.
+
+#### Parameters
+
+- `userId` - Steam user ID
+
+```http
+GET http://localhost:3000/v2/steam/user/76561198066613958
+```
+
+### GET /v2/steam/user/:userId/games
+
+Returns a list of games a player owns along with some playtime information, if the profile is publicly visible. Private, friends-only, and other privacy settings are not supported unless you are asking for your own personal details (ie the WebAPI key you are using is linked to the userId you are requesting).
+
+#### Parameters
+
+- `userId` - Steam user ID
+
+```http
+GET http://localhost:3000/v2/steam/user/76561198066613958/games
+```
+
+### GET /v2/steam/user/:userId/games/achievements/:appId
+
+Returns a list of achievements for this user by app id.
+
+#### Parameters
+
+- `userId` - Steam user ID
+- `appId` - Steam game ID
+
+```http
+GET http://localhost:3000/v2/steam/user/76561198066613958/games/achievements/730
+```
+
+### GET /v2/steam/user/:userId/games/stats/:appId
+
+Returns a list of achievements for this user by app id.
+
+#### Parameters
+
+- `userId` - Steam user ID
+- `appId` - Steam game ID
+
+```http
+GET http://localhost:3000/v2/steam/user/76561198066613958/games/stats/730
+```
+
+### GET /v2/steam/user/:userId/games/recently
+
+Returns a list of games a player has played in the last two weeks, if the profile is publicly visible. Private, friends-only, and other privacy settings are not supported unless you are asking for your own personal details (ie the WebAPI key you are using is linked to the userId you are requesting).
+
+#### Parameters
+
+- `userId` - Steam user ID
+
+```http
+GET http://localhost:3000/v2/steam/user/76561198066613958/games/recently
+```
