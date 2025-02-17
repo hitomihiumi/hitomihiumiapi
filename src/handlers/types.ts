@@ -83,4 +83,9 @@ export interface ExtendedSteamUsers {
 export interface ExtendedSteamProfile extends SteamProfile {
     background: string | null;
     frame: string | null;
+    level: number;
+    badge: {
+        icon?: string;
+        name?: string;
+    }
 }

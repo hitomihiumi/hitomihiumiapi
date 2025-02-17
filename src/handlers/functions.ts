@@ -157,10 +157,17 @@ async function extendProfile(response: SteamUsers): Promise<ExtendedSteamUsers> 
         const { data } = await axios.get(player.profileurl);
         const $ = cheerio.load(data);
 
+        let levelData = await fetch(`https://api.steampowered.com/IPlayerService/GetSteamLevel/v1/?key=${process.env.STEAM_API_KEY}&steamid=${player.steamid}`);
+
         let profile: ExtendedSteamProfile = {
             ...player,
             background: $('.profile_background_image').children('video').attr('poster') || $('.profile_animated_background').children('video').attr('poster') || null,
-            frame: $('.profile_avatar_frame').children('img').attr('src') || null
+            frame: $('.profile_avatar_frame').children('img').attr('src') || null,
+            level: (await levelData.json()).response.player_level,
+            badge: {
+                icon: $('.badge_icon.small').attr('src') || undefined,
+                name: $('.favorite_badge_description').children('.name.ellipsis').text() || undefined
+            }
         }
 
         newRes.response.players.push(profile);
