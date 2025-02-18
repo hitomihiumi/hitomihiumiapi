@@ -36,6 +36,8 @@ export interface ExtendedSteamResponse {
 export interface ExtendedSteamGame extends SteamGame {
     library_capsule: string;
     library_capsule_2x: string;
+    library_small_capsule: string;
+    library_small_capsule_2x: string;
     library_header: string;
     library_header_2x: string;
     library_logo: string;

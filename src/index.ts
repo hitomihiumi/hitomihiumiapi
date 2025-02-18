@@ -54,7 +54,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    res.redirect('/v1/');
+    res.redirect('/v2/');
 });
 
 app.get('/v1/', (req, res) => {
@@ -446,6 +446,57 @@ app.get('/v2/steam/user/:userId/games/recently', async (req, res) => {
     }
 });
 
+app.get('/v2/steam/game/icon/:appId', async (req, res) => {
+    try {
+        let data = await fetch(`https://www.steamgriddb.com/api/v2/icons/steam/${req.params.appId}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.STEAM_GRID_API_KEY}`
+            }
+        })
+
+        let grid = await data.json();
+
+        res.send(grid.data[0].thumb);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+})
+
+app.get('/v2/steam/game/grid/:appId', async (req, res) => {
+    try {
+        let data = await fetch(`https://www.steamgriddb.com/api/v2/grids/steam/${req.params.appId}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.STEAM_GRID_API_KEY}`
+            }
+        })
+
+        let grid = await data.json();
+
+        res.send(grid.data[0].thumb);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+})
+
+app.get('/v2/steam/game/logo/:appId', async (req, res) => {
+    try {
+        let data = await fetch(`https://www.steamgriddb.com/api/v2/logos/steam/${req.params.appId}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.STEAM_GRID_API_KEY}`
+            }
+        })
+
+        let grid = await data.json();
+
+        res.send(grid.data[0].thumb);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).send({error: error.message});
+    }
+})
+
 app.use((err: CustomError, req: Request, res: Response, next: NextFunction) => {
     console.error(err.message);
     if (err.status === 404) {
@@ -454,8 +505,10 @@ app.use((err: CustomError, req: Request, res: Response, next: NextFunction) => {
     res.status(500).send({ error: 'Internal Server Error' });
 });
 
-app.listen(process.env.PORT || 3001, () => {
-  console.log(`Server is running on port ${process.env.PORT || 3001}`);
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 3000}`);
+  console.log(`Discord-Web-API v${info.version}`);
+  console.log(`http://localhost:${process.env.PORT || 3000}`);
 });
 
 client.login(process.env.TOKEN);

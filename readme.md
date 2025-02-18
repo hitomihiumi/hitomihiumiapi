@@ -181,3 +181,39 @@ Returns a list of games a player has played in the last two weeks, if the profil
 ```http
 GET http://localhost:3000/v2/steam/user/76561198066613958/games/recently
 ```
+
+### GET /v2/steam/game/icon/:appId
+
+Returns a link to the game icon.
+
+#### Parameters
+
+- `appId` - Steam game ID
+
+```http
+GET http://localhost:3000/v2/steam/game/icon/730
+```
+
+### GET /v2/steam/game/grid/:appId
+
+Returns a link to the game grid image.
+
+#### Parameters
+
+- `appId` - Steam game ID
+
+```http
+GET http://localhost:3000/v2/steam/game/grid/730
+```
+
+### GET /v2/steam/game/logo/:appId
+
+Returns a link to the game logo image.
+
+#### Parameters
+
+- `appId` - Steam game ID
+
+```http
+GET http://localhost:3000/v2/steam/game/logo/730
+```

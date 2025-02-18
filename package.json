@@ -14,10 +14,11 @@
     "typescript": "^5.4.5"
   },
   "name": "hitomihiumiapi",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "test": "tsc && node ./dist/src/index.js",
     "run": "node ./dist/src/index.js"
   },
   "author": "hitomihiumi",

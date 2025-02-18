@@ -189,6 +189,8 @@ function extendResponce(response: SteamResponse): ExtendedSteamResponse {
             ...game,
             library_capsule: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_600x900.jpg`,
             library_capsule_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/library_600x900_2x.jpg`,
+            library_small_capsule: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_231x87.jpg`,
+            library_small_capsule_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_231x87_2x.jpg`,
             library_header: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
             library_header_2x: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header_2x.jpg`,
             library_logo: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/logo.png`,
