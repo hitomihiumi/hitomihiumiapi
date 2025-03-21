@@ -164,6 +164,7 @@ async function extendProfile(response: SteamUsers): Promise<ExtendedSteamUsers> 
             background: $('.profile_background_image').children('video').attr('poster') || $('.profile_animated_background').children('video').attr('poster') || null,
             frame: $('.profile_avatar_frame').children('img').attr('src') || null,
             level: (await levelData.json()).response.player_level,
+            avatarfull: $('.playerAvatarAutoSizeInner').children('img').attr('src') || player.avatarfull,
             badge: {
                 icon: $('.badge_icon.small').attr('src') || undefined,
                 name: $('.favorite_badge_description').children('.name.ellipsis').text() || undefined

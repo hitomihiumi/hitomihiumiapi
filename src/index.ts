@@ -398,9 +398,9 @@ app.get('/v2/steam/user/:userId/games', async (req, res) => {
     try {
         let data = await fetch(`http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
 
-        let games = processResponse(await data.json());
+        let games = await data.json();
 
-        res.send(games);
+        res.send(processResponse(games));
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
