@@ -228,6 +228,28 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                         case "all":
                             getAllUserData(res, client, user);
                             break;
+                        case "withoutPresence":
+                            let badges: string[] = [];
+                            let avatarURL: string = "";
+                            let bannerURL: string = "";
+                            let avatarDecorationURL: string = "";
+
+                            let data = { ...user, badges, avatarURL, bannerURL, avatarDecorationURL, presence: {} };
+
+                            if (user.flags) data.badges = getFlags(user.flags.toArray());
+                            // @ts-ignore
+                            if (user.avatarURL({ size: 4096 })) data.avatarURL = user.avatarURL({ size: 4096 });
+                            // @ts-ignore
+                            if (user.bannerURL({ size: 4096 })) data.bannerURL = user.bannerURL({ size: 4096 });
+                            // @ts-ignore
+                            if (user.avatarDecorationURL({ size: 4096 })) data.avatarDecorationURL = user.avatarDecorationURL({ size: 4096 });
+
+                            res.send({
+                                status: 200,
+                                message: "User found!",
+                                data: data
+                            });
+                            break;
                         default:
                             getAllUserData(res, client, user);
                             break;
