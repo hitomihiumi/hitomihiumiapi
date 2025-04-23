@@ -2,7 +2,14 @@ import express, { Request, Response, NextFunction } from 'express';
 import {Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, Activity} from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
-import {getSize, getFlags, getAllUserData, sortPackages, processResponse, extendProfile} from './handlers/functions';
+import {
+    getSize,
+    getFlags,
+    getAllUserData,
+    sortPackages,
+    processResponse,
+    extendProfile
+} from './handlers/functions';
 import type { Documentation } from "@hitomihiumi/micro-docgen";
 
 import { Holder } from "./handlers/Holder";
@@ -175,11 +182,16 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                             res.send(user.accentColor);
                             break;
                         case "presence":
+                            let presence: any = {}
                             try {
                                 // @ts-ignore
-                                client.guilds.fetch(process.env.BASE_GUILD).then((guild) => {
-                                    guild.members.fetch(user.id).then((member: { presence: any; }) => {
-                                        member.presence.activities.forEach((activity: Activity) => {
+                                client.guilds.fetch(process.env.BASE_GUILD).then(async(guild) => {
+                                    let member = guild.members.cache.get(user.id)
+                                    if (member) {
+
+                                        presence = member.presence;
+
+                                        presence.activities.forEach((activity: Activity) => {
                                             if (activity.name !== "Custom Status") {
                                                 if (activity.assets) {
                                                     activity.assets.largeImage = activity.assets.largeImageURL();
@@ -187,12 +199,20 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                                                 }
                                             }
                                         })
+
+
                                         res.send({
                                             status: 200,
                                             message: "User found!",
-                                            data: member.presence
+                                            data: presence
                                         });
-                                    });
+                                    } else {
+                                        res.send({
+                                            status: 200,
+                                            message: "User found!",
+                                            data: presence
+                                        });
+                                    }
                                 });
                             } catch (error) {
                                 res.status(404).send({
@@ -232,7 +252,7 @@ app.get('/v1/docs', async (req, res) => {
             throw new Error('data.modules is not an array');
         }
 
-        var docs = [] as Array<Documentation>;
+        let docs = [] as Array<Documentation>;
 
         if (!(v_1.compareVersions(data))) {
             let diff = v_1.diffVersions(data);
@@ -325,7 +345,7 @@ app.get('/v2/docs', async (req, res) => {
             throw new Error('data.modules is not an array');
         }
 
-        var docs = [] as Array<Documentation>;
+        let docs = [] as Array<Documentation>;
 
         if (!(v_2.compareVersions(data))) {
             let diff = v_2.diffVersions(data);
