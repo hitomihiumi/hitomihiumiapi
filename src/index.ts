@@ -1,5 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
-import {Client, GatewayIntentBits, PresenceUpdateStatus, ActivityType, Activity} from 'discord.js';
+import {
+    Client,
+    GatewayIntentBits,
+    PresenceUpdateStatus,
+    ActivityType,
+    Activity,
+    WebhookClient,
+    EmbedBuilder,
+    Presence
+} from 'discord.js';
 import * as info from '../package.json';
 import { config } from 'dotenv';
 import {
@@ -49,6 +58,8 @@ const client = new Client({
         require(`./handlers/${h}`)(client);
     })
 
+const webhookClient = new WebhookClient({ url: process.env.ERROR_LOG_WEBHOOK as string });
+
 interface CustomError extends Error {
     status?: number;
 }
@@ -65,9 +76,8 @@ app.get('/', (req, res) => {
 });
 
 app.get('/v1/', (req, res) => {
-  res.send({
+  res.status(200).send({
     version: info.version,
-    status: 200,
     message: "Discord-Web-API is running!",
     endpoints: {
         guilds: {
@@ -87,14 +97,11 @@ app.get('/v1/guilds/:guildId', async (req: Request, res: Response, next: NextFun
   client.guilds.fetch(req.params.guildId).then((guild) => {
       if (!guild) {
           res.status(404).send({
-              status: 404,
-              message: "Guild not found!"
+              error: "Guild not found!"
           });
       } else {
-          res.send({
-              status: 200,
-              message: "Guild found!",
-              data: guild
+          res.status(200).send({
+              ...guild
           });
       }
   });
@@ -105,8 +112,7 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
         const user = await client.users.fetch(req.params.userId, { force: true });
             if (!user) {
                 res.status(404).send({
-                    status: 404,
-                    message: "User not found!"
+                    error: "User not found!"
                 });
             } else {
                 if (Object.keys(req.query).length > 0) {
@@ -134,9 +140,8 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                                 // @ts-ignore
                                 res.redirect(user.bannerURL({ forceStatic: Boolean(req.query.forceStatic), size: getSize(Number(req.query.size)) }));
                             } else {
-                                res.send({
-                                    status: 404,
-                                    message: "User banner not found!"
+                                res.status(200).send({
+                                    error: "User banner not found!"
                                 });
                             }
                             break;
@@ -148,9 +153,8 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                                 // @ts-ignore
                                 res.redirect(user.avatarDecorationURL({ size: getSize(Number(req.query.size)) }));
                             } else {
-                                res.send({
-                                    status: 404,
-                                    message: "User avatar decoration not found!"
+                                res.status(404).send({
+                                    error: "User avatar decoration not found!"
                                 });
                             }
                             break;
@@ -182,42 +186,25 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                             res.send(user.accentColor);
                             break;
                         case "presence":
-                            let presence: any = {}
                             try {
-                                // @ts-ignore
-                                client.guilds.fetch(process.env.BASE_GUILD).then(async(guild) => {
+                                client.guilds.fetch(process.env.BASE_GUILD as string).then(async(guild) => {
                                     let member = guild.members.cache.get(user.id)
                                     if (member) {
 
-                                        presence = member.presence;
+                                        let { status, activities, clientStatus } = member.presence as Presence;
 
-                                        presence.activities.forEach((activity: Activity) => {
-                                            if (activity.name !== "Custom Status") {
-                                                if (activity.assets) {
-                                                    activity.assets.largeImage = activity.assets.largeImageURL();
-                                                    activity.assets.smallImage = activity.assets.smallImageURL();
-                                                }
-                                            }
-                                        })
-
-
-                                        res.send({
-                                            status: 200,
-                                            message: "User found!",
-                                            data: presence
+                                        res.status(200).send({
+                                            status, activities, clientStatus
                                         });
                                     } else {
-                                        res.send({
-                                            status: 200,
-                                            message: "User found!",
-                                            data: presence
+                                        res.status(404).send({
+                                            error: "User presence not found!"
                                         });
                                     }
                                 });
                             } catch (error) {
                                 res.status(404).send({
-                                    status: 404,
-                                    message: error
+                                    error
                                 });
                             }
                             break;
@@ -244,10 +231,8 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
                             // @ts-ignore
                             if (user.avatarDecorationURL({ size: 4096 })) data.avatarDecorationURL = user.avatarDecorationURL({ size: 4096 });
 
-                            res.send({
-                                status: 200,
-                                message: "User found!",
-                                data: data
+                            res.status(200).send({
+                                ...data
                             });
                             break;
                         default:
@@ -261,6 +246,7 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
     } catch {
         const error: CustomError = new Error('Invalid ID');
         error.status = 404;
+        error.name = 'NotFoundError';
         return next(error);
     }
 });
@@ -304,7 +290,7 @@ app.get('/v1/docs', async (req, res) => {
         }
 
         docs = sortPackages(docs);
-        res.send(docs);
+        res.status(200).send(docs);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
@@ -324,7 +310,7 @@ app.get('/v1/docs/:module/:version', async (req, res) => {
             await v_1.write(docs);
         }
 
-        res.send(docs);
+        res.status(200).send(docs);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
@@ -332,9 +318,8 @@ app.get('/v1/docs/:module/:version', async (req, res) => {
 });
 
 app.get('/v2/', (req, res) => {
-    res.send({
+    res.status(200).send({
         version: info.version,
-        status: 200,
         message: "Discord-Web-API is running!",
         endpoints: {
             docs: {
@@ -396,7 +381,7 @@ app.get('/v2/docs', async (req, res) => {
         }
 
         docs = sortPackages(docs);
-        res.send(docs);
+        res.status(200).send(docs);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
@@ -416,7 +401,7 @@ app.get('/v2/docs/:module/:version', async (req, res) => {
             await v_2.write(docs);
         }
 
-        res.send(docs);
+        res.status(200).send(docs);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
@@ -429,7 +414,7 @@ app.get('/v2/steam/user/:userId', async (req, res) => {
 
         let user = await data.json();
 
-        res.send(await extendProfile(user));
+        res.status(200).send(await extendProfile(user));
     } catch (error: any) {
         console.error(error);
         res.status(500).send({ error: error.message });
@@ -442,7 +427,7 @@ app.get('/v2/steam/user/:userId/games', async (req, res) => {
 
         let games = await data.json();
 
-        res.send(processResponse(games));
+        res.status(200).send(processResponse(games));
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -455,7 +440,7 @@ app.get('/v2/steam/user/:userId/games/stats/:appId', async (req, res) => {
 
         let stats = await data.json();
 
-        res.send(stats);
+        res.status(200).send(stats);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -468,7 +453,7 @@ app.get('/v2/steam/user/:userId/games/achievements/:appId', async (req, res) => 
 
         let achievements = await data.json();
 
-        res.send(achievements);
+        res.status(200).send(achievements);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -481,7 +466,7 @@ app.get('/v2/steam/user/:userId/games/recently', async (req, res) => {
 
         let games = processResponse(await data.json());
 
-        res.send(games);
+        res.status(200).send(games);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -498,7 +483,7 @@ app.get('/v2/steam/game/icon/:appId', async (req, res) => {
 
         let grid = await data.json();
 
-        res.send(grid.data[0].thumb);
+        res.status(200).send(grid.data[0].thumb);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -515,7 +500,7 @@ app.get('/v2/steam/game/grid/:appId', async (req, res) => {
 
         let grid = await data.json();
 
-        res.send(grid.data[0].thumb);
+        res.status(200).send(grid.data[0].thumb);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -532,7 +517,7 @@ app.get('/v2/steam/game/logo/:appId', async (req, res) => {
 
         let grid = await data.json();
 
-        res.send(grid.data[0].thumb);
+        res.status(200).send(grid.data[0].thumb);
     } catch (error: any) {
         console.error(error);
         res.status(500).send({error: error.message});
@@ -540,6 +525,14 @@ app.get('/v2/steam/game/logo/:appId', async (req, res) => {
 })
 
 app.use((err: CustomError, req: Request, res: Response, next: NextFunction) => {
+    webhookClient.send({
+        embeds: [
+            new EmbedBuilder()
+                .setTitle('Error')
+                .setDescription(`\`\`\`json\n${JSON.stringify(err, null, 2)}\n\`\`\``)
+                .setColor('Red')
+        ]
+    })
     console.error(err.message);
     if (err.status === 404) {
         return res.status(404).send({ error: 'Not Found' });

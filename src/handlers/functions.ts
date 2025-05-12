@@ -1,4 +1,4 @@
-import { Activity, Client, User, UserFlagsString } from "discord.js";
+import {Activity, Client, Presence, User, UserFlagsString} from "discord.js";
 import { Response } from 'express';
 import { Documentation } from "@hitomihiumi/micro-docgen";
 import {ExtendedSteamProfile, ExtendedSteamResponse, ExtendedSteamUsers, SteamResponse, SteamUsers} from "./types";
@@ -100,36 +100,22 @@ function getAllUserData(res: Response, client: Client, user: User) {
             let member = guild.members.cache.get(user.id)
             if (member) {
 
-                data.presence = member.presence;
+                let { status, activities, clientStatus } = member.presence as Presence;
 
-                data.presence.activities.forEach((activity: Activity) => {
-                    if (activity.name !== "Custom Status") {
-                        if (activity.assets) {
-                            activity.assets.largeImage = activity.assets.largeImageURL();
-                            activity.assets.smallImage = activity.assets.smallImageURL();
-                        }
-                    }
-                })
+                data.presence = { status, activities, clientStatus };
 
-
-                res.send({
-                    status: 200,
-                    message: "User found!",
-                    data: data
+                res.status(200).send({
+                    ...data
                 });
             } else {
-                res.send({
-                    status: 200,
-                    message: "User found!",
-                    data: data
+                res.status(200).send({
+                    ...data
                 });
             }
         });
     } catch {
-        res.send({
-            status: 200,
-            message: "User found!",
-            data: data
+        res.status(200).send({
+            ...data
         });
     }
 }
