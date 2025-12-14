@@ -120,10 +120,6 @@ function getAllUserData(res: Response, client: Client, user: User) {
     }
 }
 
-function sortPackages(docs: Array<Documentation>): Array<Documentation> {
-    return docs.sort((a, b) => b.metadata.timestamp - a.metadata.timestamp);
-}
-
 function excludeGame(response: SteamResponse): SteamResponse {
     if (process.env.EXCLUDED_GAMES) {
         // @ts-ignore
@@ -143,13 +139,11 @@ async function extendProfile(response: SteamUsers): Promise<ExtendedSteamUsers> 
         const { data } = await axios.get(player.profileurl);
         const $ = cheerio.load(data);
 
-        let levelData = await fetch(`https://api.steampowered.com/IPlayerService/GetSteamLevel/v1/?key=${process.env.STEAM_API_KEY}&steamid=${player.steamid}`);
-
         let profile: ExtendedSteamProfile = {
             ...player,
             background: $('.profile_background_image').children('video').attr('poster') || $('.profile_animated_background').children('video').attr('poster') || null,
             frame: $('.profile_avatar_frame').children('img').attr('src') || null,
-            level: (await levelData.json()).response.player_level,
+            level: parseInt($('.friendPlayerLevelNum').text()) || 0,
             avatarfull: $('.playerAvatarAutoSizeInner').children('img').attr('src') || player.avatarfull,
             badge: {
                 icon: $('.badge_icon.small').attr('src') || undefined,
@@ -194,4 +188,4 @@ function processResponse(response: SteamResponse): ExtendedSteamResponse {
     return extendResponce(excludeGame(response));
 }
 
-export { getFlags, getSize, getAllUserData, sortPackages, excludeGame, extendResponce, processResponse, extendProfile };
+export { getFlags, getSize, getAllUserData, excludeGame, extendResponce, processResponse, extendProfile };

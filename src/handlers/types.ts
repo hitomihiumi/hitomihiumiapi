@@ -1,12 +1,3 @@
-export interface Versions {
-    modules: string[];
-    versions: VersionElement;
-}
-
-export interface VersionElement {
-    [key: string]: string[];
-}
-
 export interface SteamResponse {
     response: {
         total_count: number;

@@ -4,7 +4,6 @@ import {
     GatewayIntentBits,
     PresenceUpdateStatus,
     ActivityType,
-    Activity,
     WebhookClient,
     EmbedBuilder,
     Presence
@@ -15,19 +14,9 @@ import {
     getSize,
     getFlags,
     getAllUserData,
-    sortPackages,
     processResponse,
     extendProfile
 } from './handlers/functions';
-import type { Documentation } from "@hitomihiumi/micro-docgen";
-
-import { Holder } from "./handlers/Holder";
-
-const v_1 = new Holder('v1');
-const v_2 = new Holder('v2');
-
-v_1.init();
-v_2.init();
 
 config();
 
@@ -251,72 +240,6 @@ app.get('/v1/users/:userId', async (req: Request, res: Response, next: NextFunct
     }
 });
 
-app.get('/v1/docs', async (req, res) => {
-    try {
-        let versions = await fetch('https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/versions.json');
-        let data = await versions.json();
-
-        if (!Array.isArray(data.modules)) {
-            throw new Error('data.modules is not an array');
-        }
-
-        let docs = [] as Array<Documentation>;
-
-        if (!(v_1.compareVersions(data))) {
-            let diff = v_1.diffVersions(data);
-            for (let module of diff.modules) {
-                if (!Array.isArray(data.versions[module])) {
-                    throw new Error(`data.versions[${module}] is not an array`);
-                }
-
-                for (const version of data.versions[module]) {
-                    let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${module}/${version}.json`);
-                    let data = await raw.json() as Documentation;
-                    await v_1.write(data);
-                    docs.push(data);
-                }
-            }
-        } else {
-            for (const module of data.modules) {
-                if (!Array.isArray(data.versions[module])) {
-                    throw new Error(`data.versions[${module}] is not an array`);
-                }
-
-                for (const version of data.versions[module]) {
-                    let data = await v_1.read(module, version);
-                    docs.push(data);
-                }
-            }
-        }
-
-        docs = sortPackages(docs);
-        res.status(200).send(docs);
-    } catch (error: any) {
-        console.error(error);
-        res.status(500).send({ error: error.message });
-    }
-});
-
-app.get('/v1/docs/:module/:version', async (req, res) => {
-    try {
-
-        let docs: Documentation;
-
-        if (v_1.versions.modules.includes(req.params.module) && v_1.versions.versions[req.params.module].includes(req.params.version)) {
-            docs = await v_1.read(req.params.module, req.params.version);
-        } else {
-            let raw = await fetch(`https://raw.githubusercontent.com/hitomihiumi/docsholder/master/packages/${req.params.module}/${req.params.version}.json`);
-            docs = await raw.json();
-            await v_1.write(docs);
-        }
-
-        res.status(200).send(docs);
-    } catch (error: any) {
-        console.error(error);
-        res.status(500).send({ error: error.message });
-    }
-});
-
 app.get('/v2/', (req, res) => {
     res.status(200).send({
         version: info.version,
@@ -343,75 +266,12 @@ app.get('/v2/', (req, res) => {
     });
 });
 
-app.get('/v2/docs', async (req, res) => {
-    try {
-        let versions = await fetch('https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/versions.json');
-        let data = await versions.json();
-
-        if (!Array.isArray(data.modules)) {
-            throw new Error('data.modules is not an array');
-        }
-
-        let docs = [] as Array<Documentation>;
-
-        if (!(v_2.compareVersions(data))) {
-            let diff = v_2.diffVersions(data);
-            for (let module of diff.modules) {
-                if (!Array.isArray(data.versions[module])) {
-                    throw new Error(`data.versions[${module}] is not an array`);
-                }
-
-                for (const version of data.versions[module]) {
-                    let raw = await fetch(`https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/${module}/${version}.json`);
-                    let data = await raw.json() as Documentation;
-                    await v_2.write(data);
-                    docs.push(data);
-                }
-            }
-        } else {
-            for (const module of data.modules) {
-                if (!Array.isArray(data.versions[module])) {
-                    throw new Error(`data.versions[${module}] is not an array`);
-                }
-
-                for (const version of data.versions[module]) {
-                    docs.push(await v_2.read(module, version));
-                }
-            }
-        }
-
-        docs = sortPackages(docs);
-        res.status(200).send(docs);
-    } catch (error: any) {
-        console.error(error);
-        res.status(500).send({ error: error.message });
-    }
-});
-
-app.get('/v2/docs/:module/:version', async (req, res) => {
-    try {
-
-        let docs: Documentation;
-
-        if (v_2.versions.modules.includes(req.params.module) && v_2.versions.versions[req.params.module].includes(req.params.version)) {
-            docs = await v_2.read(req.params.module, req.params.version);
-        } else {
-            let raw = await fetch(`https://raw.githubusercontent.com/NMMTY/docsholder/master/packages/${req.params.module}/${req.params.version}.json`);
-            docs = await raw.json();
-            await v_2.write(docs);
-        }
-
-        res.status(200).send(docs);
-    } catch (error: any) {
-        console.error(error);
-        res.status(500).send({ error: error.message });
-    }
-});
-
 app.get('/v2/steam/user/:userId', async (req, res) => {
     try {
         let data = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${process.env.STEAM_API_KEY}&steamids=${req.params.userId}&format=json`);
-
+        if (!data.ok) {
+            throw new Error(`Steam API error: ${data.status} ${data.statusText}`);
+        }
         let user = await data.json();
 
         res.status(200).send(await extendProfile(user));
@@ -420,11 +280,12 @@ app.get('/v2/steam/user/:userId', async (req, res) => {
         res.status(500).send({ error: error.message });
     }
 });
-
 app.get('/v2/steam/user/:userId/games', async (req, res) => {
     try {
         let data = await fetch(`http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
-
+        if (!data.ok) {
+            throw new Error(`Steam API error: ${data.status} ${data.statusText}`);
+        }
         let games = await data.json();
 
         res.status(200).send(processResponse(games));
@@ -437,7 +298,9 @@ app.get('/v2/steam/user/:userId/games', async (req, res) => {
 app.get('/v2/steam/user/:userId/games/stats/:appId', async (req, res) => {
     try {
         let data = await fetch(`http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?appid=${req.params.appId}&key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
-
+        if (!data.ok) {
+            throw new Error(`Steam API error: ${data.status} ${data.statusText}`);
+        }
         let stats = await data.json();
 
         res.status(200).send(stats);
@@ -450,7 +313,9 @@ app.get('/v2/steam/user/:userId/games/stats/:appId', async (req, res) => {
 app.get('/v2/steam/user/:userId/games/achievements/:appId', async (req, res) => {
     try {
         let data = await fetch(`http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?appid=${req.params.appId}&key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
-
+        if (!data.ok) {
+            throw new Error(`Steam API error: ${data.status} ${data.statusText}`);
+        }
         let achievements = await data.json();
 
         res.status(200).send(achievements);
@@ -463,7 +328,9 @@ app.get('/v2/steam/user/:userId/games/achievements/:appId', async (req, res) => 
 app.get('/v2/steam/user/:userId/games/recently', async (req, res) => {
     try {
         let data = await fetch(`http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${req.params.userId}&format=json`);
-
+        if (!data.ok) {
+            throw new Error(`Steam API error: ${data.status} ${data.statusText}`);
+        }
         let games = processResponse(await data.json());
 
         res.status(200).send(games);
